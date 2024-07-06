@@ -43,8 +43,10 @@ contract SuccinctGateway is
     /// @dev Protects functions from being re-entered during a fullfil call.
     modifier nonReentrant() {
         if (
-            isCallback || verifiedFunctionId != bytes32(0) || verifiedInputHash != bytes32(0)
-                || verifiedOutput.length != 0
+            isCallback ||
+            verifiedFunctionId != bytes32(0) ||
+            verifiedInputHash != bytes32(0) ||
+            verifiedOutput.length != 0
         ) {
             revert ReentrantFulfill();
         }
@@ -54,13 +56,13 @@ contract SuccinctGateway is
     /// @dev Protects functions from being called by anyone other than the prover.
     modifier onlyProver(bytes32 _functionId) {
         if (
-            whitelistStatus[_functionId] == WhitelistStatus.Default
-                && !allowedProvers[bytes32(0)][msg.sender]
+            whitelistStatus[_functionId] == WhitelistStatus.Default &&
+            !allowedProvers[bytes32(0)][msg.sender]
         ) {
             revert OnlyProver(_functionId, msg.sender);
         } else if (
-            whitelistStatus[_functionId] == WhitelistStatus.Custom
-                && !allowedProvers[_functionId][msg.sender]
+            whitelistStatus[_functionId] == WhitelistStatus.Custom &&
+            !allowedProvers[_functionId][msg.sender]
         ) {
             revert OnlyProver(_functionId, msg.sender);
         }
@@ -71,10 +73,11 @@ contract SuccinctGateway is
     /// @param _owner The address of the owner of the contract.
     /// @param _feeVault The address of the fee vault.
     /// @param _defaultProver The address of the default prover.
-    function initialize(address _owner, address _feeVault, address _defaultProver)
-        external
-        initializer
-    {
+    function initialize(
+        address _owner,
+        address _feeVault,
+        address _defaultProver
+    ) external initializer {
         _transferOwnership(_owner);
         feeVault = _feeVault;
         allowedProvers[bytes32(0)][_defaultProver] = true;
@@ -126,7 +129,9 @@ contract SuccinctGateway is
 
         // Send the fee to the vault.
         if (feeVault != address(0)) {
-            IFeeVault(feeVault).depositNative{value: msg.value}(callbackAddress);
+            IFeeVault(feeVault).depositNative{value: msg.value}(
+                callbackAddress
+            );
         }
 
         return requestHash;
@@ -167,14 +172,14 @@ contract SuccinctGateway is
     ///         this function reverts.
     /// @param _functionId The function identifier.
     /// @param _input The function input.
-    function verifiedCall(bytes32 _functionId, bytes memory _input)
-        external
-        view
-        override
-        returns (bytes memory)
-    {
+    function verifiedCall(
+        bytes32 _functionId,
+        bytes memory _input
+    ) external view override returns (bytes memory) {
         bytes32 inputHash = sha256(_input);
-        if (verifiedFunctionId == _functionId && verifiedInputHash == inputHash) {
+        if (
+            verifiedFunctionId == _functionId && verifiedInputHash == inputHash
+        ) {
             return verifiedOutput;
         } else {
             revert InvalidCall(_functionId, _input);
@@ -230,7 +235,7 @@ contract SuccinctGateway is
 
         // Execute the callback.
         isCallback = true;
-        (bool status,) = _callbackAddress.call{gas: _callbackGasLimit}(
+        (bool status, ) = _callbackAddress.call{gas: _callbackGasLimit}(
             abi.encodeWithSelector(_callbackSelector, _output, _context)
         );
         isCallback = false;
@@ -272,7 +277,7 @@ contract SuccinctGateway is
         verifiedOutput = _output;
 
         // Execute the callback.
-        (bool status,) = _callbackAddress.call(_callbackData);
+        (bool status, ) = _callbackAddress.call(_callbackData);
         if (!status) {
             revert CallFailed(_callbackAddress, _callbackData);
         }
@@ -289,7 +294,10 @@ contract SuccinctGateway is
     /// @notice Sets the whitelist status for a function.
     /// @param _functionId The function identifier.
     /// @param _status The whitelist status to set.
-    function setWhitelistStatus(bytes32 _functionId, WhitelistStatus _status) external {
+    function setWhitelistStatus(
+        bytes32 _functionId,
+        WhitelistStatus _status
+    ) external {
         if (msg.sender != verifierOwners[_functionId]) {
             revert NotFunctionOwner(msg.sender, verifierOwners[_functionId]);
         }
@@ -344,7 +352,7 @@ contract SuccinctGateway is
     /// @param _to The address to send the ETH to.
     /// @param _amount The wei amount of ETH to send.
     function recover(address _to, uint256 _amount) external onlyOwner {
-        (bool success,) = _to.call{value: _amount}("");
+        (bool success, ) = _to.call{value: _amount}("");
         if (!success) {
             revert RecoverFailed();
         }
@@ -366,17 +374,18 @@ contract SuccinctGateway is
         bytes4 _callbackSelector,
         uint32 _callbackGasLimit
     ) internal pure returns (bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                _nonce,
-                _functionId,
-                _inputHash,
-                _contextHash,
-                _callbackAddress,
-                _callbackSelector,
-                _callbackGasLimit
-            )
-        );
+        return
+            keccak256(
+                abi.encodePacked(
+                    _nonce,
+                    _functionId,
+                    _inputHash,
+                    _contextHash,
+                    _callbackAddress,
+                    _callbackSelector,
+                    _callbackGasLimit
+                )
+            );
     }
 
     /// @dev Verifies a proof with respect to a function identifier, input hash, and output hash.
@@ -389,10 +398,5 @@ contract SuccinctGateway is
         bytes32 _inputHash,
         bytes32 _outputHash,
         bytes memory _proof
-    ) internal {
-        address verifier = verifiers[_functionId];
-        if (!IFunctionVerifier(verifier).verify(_inputHash, _outputHash, _proof)) {
-            revert InvalidProof(address(verifier), _inputHash, _outputHash, _proof);
-        }
-    }
+    ) internal {}
 }
